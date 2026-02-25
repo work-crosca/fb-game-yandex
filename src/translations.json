@@ -1,0 +1,53 @@
+{
+  "en": {
+    "title": "Flappy Bird",
+    "play": "Play",
+    "leaderboard": "Leaderboard",
+    "sound": "Sound",
+    "muted": "Muted",
+    "best": "Best",
+    "score": "Score",
+    "gameOver": "Game Over",
+    "restart": "Restart",
+    "menu": "Menu",
+    "revive": "Revive (Ad)",
+    "loading": "Loading...",
+    "loadingLb": "Loading leaderboard...",
+    "noEntries": "No entries yet",
+    "yourRank": "Your rank"
+  },
+  "ru": {
+    "title": "Flappy Bird",
+    "play": "Igrat",
+    "leaderboard": "Liderboard",
+    "sound": "Zvuk",
+    "muted": "Bez zvuka",
+    "best": "Luchshiy",
+    "score": "Ochki",
+    "gameOver": "Konec igry",
+    "restart": "Povtor",
+    "menu": "Menu",
+    "revive": "Vozrozhdenie (Reklama)",
+    "loading": "Zagruzka...",
+    "loadingLb": "Zagruzka liderborda...",
+    "noEntries": "Net zapisey",
+    "yourRank": "Vash rang"
+  },
+  "ro": {
+    "title": "Flappy Bird",
+    "play": "Joaca",
+    "leaderboard": "Clasament",
+    "sound": "Sunet",
+    "muted": "Mut",
+    "best": "Record",
+    "score": "Scor",
+    "gameOver": "Game Over",
+    "restart": "Restart",
+    "menu": "Meniu",
+    "revive": "Continua (Ad)",
+    "loading": "Se incarca...",
+    "loadingLb": "Se incarca clasamentul...",
+    "noEntries": "Nu exista intrari",
+    "yourRank": "Pozitia ta"
+  }
+}

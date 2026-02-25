@@ -1,0 +1,2 @@
+leaderboard_technical_name=top_score_lb
+supported_languages=en,ru,ro
