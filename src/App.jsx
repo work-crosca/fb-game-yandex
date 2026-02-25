@@ -34,9 +34,9 @@ function useWindowSize() {
 }
 
 function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGameplay, onScore, onGameOver }) {
-  const groundHeight = Math.max(84, Math.min(140, height * 0.18));
+  const groundHeight = Math.max(84, Math.min(148, height * 0.2));
   const groundY = height - groundHeight;
-  const hudFontSize = Math.max(36, Math.min(58, width * 0.13));
+  const hudFontSize = Math.max(34, Math.min(58, width * 0.13));
 
   const birdFrames = useMemo(() => createBirdFrames(), []);
 
@@ -45,6 +45,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     birdY: height * 0.45,
     birdRotation: 0,
     score: 0,
+    started: false,
     groundY,
     bob: 0,
     pipes: []
@@ -90,12 +91,14 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
         currentGap: BASE_CONFIG.maxGap,
         spawner: new Spawner(BASE_CONFIG, () => height)
       };
+
       worldRef.current = world;
       setView({
         birdX: world.bird.x,
         birdY: world.bird.y,
         birdRotation: 0,
         score: 0,
+        started: false,
         groundY,
         bob: 0,
         pipes: []
@@ -104,7 +107,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     };
 
     createWorld();
-  }, [roundId, width, height, groundY]);
+  }, [roundId, width, height, groundY, onScore]);
 
   useEffect(() => {
     const world = worldRef.current;
@@ -177,6 +180,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
       birdY: world.bird.y,
       birdRotation: world.bird.rotation,
       score: world.score,
+      started: world.started,
       groundY,
       bob: world.bob,
       pipes: world.pipes.map((pipe) => ({
@@ -189,10 +193,8 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     });
   });
 
-  const onPointerDown = () => flap();
-
   return (
-    <pixiContainer eventMode="static" pointertap={onPointerDown}>
+    <pixiContainer eventMode="static" pointertap={flap}>
       <pixiGraphics draw={(g) => drawBackground(g, width, height, groundY)} />
 
       {view.pipes.map((pipe) => (
@@ -215,13 +217,25 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
       />
 
       {gameState === GAME_STATE.PLAYING && (
-        <pixiText
-          text={`${view.score}`}
-          x={width / 2}
-          y={BASE_CONFIG.hudTopPadding}
-          anchor={0.5}
-          style={{ fontSize: hudFontSize, fill: '#ffffff', fontWeight: 900, stroke: { color: '#10233f', width: 6 } }}
-        />
+        <>
+          <pixiText
+            text={`${view.score}`}
+            x={width / 2}
+            y={BASE_CONFIG.hudTopPadding}
+            anchor={0.5}
+            style={{ fontSize: hudFontSize, fill: '#ffffff', fontWeight: 900, stroke: { color: '#10233f', width: 6 } }}
+          />
+
+          {!view.started && (
+            <pixiText
+              text="Tap / Space"
+              x={width / 2}
+              y={Math.max(BASE_CONFIG.hudTopPadding + 56, height * 0.2)}
+              anchor={0.5}
+              style={{ fontSize: Math.max(20, width * 0.06), fill: '#10233f', fontWeight: 900 }}
+            />
+          )}
+        </>
       )}
     </pixiContainer>
   );
@@ -235,6 +249,10 @@ function drawBackground(g, width, height, groundY) {
   const cloudY = Math.max(42, height * 0.12);
   g.ellipse(width * 0.2, cloudY, cloudBase * 1.3, cloudBase).fill({ color: 0xffffff, alpha: 0.72 });
   g.ellipse(width * 0.68, cloudY * 1.28, cloudBase * 1.6, cloudBase * 1.1).fill({ color: 0xffffff, alpha: 0.62 });
+
+  const hillHeight = Math.max(50, height * 0.12);
+  g.ellipse(width * 0.12, groundY + 18, width * 0.42, hillHeight).fill({ color: 0x83c76a, alpha: 0.9 });
+  g.ellipse(width * 0.8, groundY + 18, width * 0.55, hillHeight * 1.1).fill({ color: 0x72bf61, alpha: 0.88 });
 }
 
 function drawPipe(g, x, y, width, height) {
@@ -242,6 +260,9 @@ function drawPipe(g, x, y, width, height) {
   g.roundRect(x, y, width, height, 12).fill(0x2f9e44);
   g.roundRect(x + width * 0.13, y + 8, width * 0.16, Math.max(6, height - 16), 8).fill({ color: 0x72d67a, alpha: 0.52 });
   g.roundRect(x, y, width, height, 12).stroke({ color: 0x1f6d30, width: 3 });
+
+  const capHeight = Math.min(20, Math.max(14, height * 0.07));
+  g.roundRect(x - 4, y + (height > capHeight * 2 ? capHeight : 0), width + 8, capHeight, 9).fill(0x3abf56).stroke({ color: 0x1f6d30, width: 2 });
 }
 
 function drawGround(g, width, height, groundY, bob) {
@@ -324,6 +345,13 @@ function circleRectHit(cx, cy, radius, rect) {
   const dx = cx - nearestX;
   const dy = cy - nearestY;
   return dx * dx + dy * dy <= radius * radius;
+}
+
+function rankBadge(index) {
+  if (index === 0) return '🥇';
+  if (index === 1) return '🥈';
+  if (index === 2) return '🥉';
+  return `#${index + 1}`;
 }
 
 export default function App() {
@@ -465,9 +493,11 @@ export default function App() {
     sdkRef.current?.startGameplay();
   };
 
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
   return (
     <div className="app-shell">
-      <Application width={width} height={height} antialias backgroundAlpha={0}>
+      <Application width={width} height={height} antialias backgroundAlpha={0} autoDensity resolution={dpr}>
         <GameCanvas
           width={width}
           height={height}
@@ -480,13 +510,24 @@ export default function App() {
         />
       </Application>
 
-      {gameState === GAME_STATE.SDK_INIT && <div className="panel">{t.loading}</div>}
+      {gameState === GAME_STATE.PLAYING && (
+        <div className="playing-overlay" aria-hidden>
+          <span className="chip">⭐ {t.best}: {bestScore}</span>
+          <span className="chip">❤️ {Math.max(0, BASE_CONFIG.maxRevivesPerRun - revivesUsed)}</span>
+        </div>
+      )}
+
+      {gameState === GAME_STATE.SDK_INIT && <div className="panel single-line">{t.loading}</div>}
 
       {gameState === GAME_STATE.MENU && (
         <div className="panel menu">
+          <p className="eyebrow">Arcade Mobile Edition</p>
           <h1>{t.title}</h1>
-          <p>{t.best}: {bestScore}</p>
-          <button onClick={startRun}>{t.play}</button>
+          <div className="stats-row">
+            <p className="stat-card"><span>{t.best}</span><strong>{bestScore}</strong></p>
+            <p className="stat-card"><span>{t.sound}</span><strong>{soundEnabled ? 'ON' : 'OFF'}</strong></p>
+          </div>
+          <button className="btn-primary" onClick={startRun}>{t.play}</button>
           <button onClick={onShowLeaderboard}>{t.leaderboard}</button>
           <button onClick={onToggleSound}>{soundEnabled ? t.sound : t.muted}</button>
         </div>
@@ -494,12 +535,15 @@ export default function App() {
 
       {gameState === GAME_STATE.GAME_OVER && (
         <div className="panel menu">
+          <p className="eyebrow">Session ended</p>
           <h2>{t.gameOver}</h2>
-          <p>{t.score}: {score}</p>
-          <p>{t.best}: {bestScore}</p>
-          <button onClick={startRun}>{t.restart}</button>
-          <button onClick={() => setGameState(GAME_STATE.MENU)}>{t.menu}</button>
+          <div className="stats-row">
+            <p className="stat-card"><span>{t.score}</span><strong>{score}</strong></p>
+            <p className="stat-card"><span>{t.best}</span><strong>{bestScore}</strong></p>
+          </div>
+          <button className="btn-primary" onClick={startRun}>{t.restart}</button>
           {revivesUsed < BASE_CONFIG.maxRevivesPerRun && <button onClick={onRevive}>{t.revive}</button>}
+          <button onClick={() => setGameState(GAME_STATE.MENU)}>{t.menu}</button>
         </div>
       )}
 
@@ -516,12 +560,17 @@ export default function App() {
                 const name = entry.player?.publicName || 'Player';
                 const value = entry.score ?? 0;
                 return (
-                  <p key={`${name}-${index}`}>{index + 1}. {name} - {value}</p>
+                  <div className="lb-row" key={`${name}-${index}`}>
+                    <strong>{rankBadge(index)}</strong>
+                    <span>{name}</span>
+                    <strong>{value}</strong>
+                  </div>
                 );
               })}
-              {leaderboardData.userRank?.rank && <p>{t.yourRank}: {leaderboardData.userRank.rank}</p>}
             </div>
           )}
+
+          {leaderboardData.userRank?.rank && <p className="rank-note">{t.yourRank}: {leaderboardData.userRank.rank}</p>}
 
           <button onClick={() => setGameState(GAME_STATE.MENU)}>{t.menu}</button>
         </div>
