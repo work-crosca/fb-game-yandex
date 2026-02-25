@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Application, extend, useTick } from '@pixi/react';
-import { AnimatedSprite, Container, Graphics, Text, Texture } from 'pixi.js';
+import { AnimatedSprite, Container, Graphics, Sprite, Text, Texture, TilingSprite } from 'pixi.js';
 import { BASE_CONFIG, GAME_STATE, SAVE_VERSION } from './core/constants.js';
 import { Physics } from './core/systems/Physics.js';
 import { Spawner } from './core/systems/Spawner.js';
@@ -12,7 +12,7 @@ import { YandexCloud } from './platform/yandex/YandexCloud.js';
 import { YandexAds } from './platform/yandex/YandexAds.js';
 import { YandexLeaderboard } from './platform/yandex/YandexLB.js';
 
-extend({ Container, Graphics, Text, AnimatedSprite });
+extend({ Container, Graphics, Text, AnimatedSprite, Sprite, TilingSprite });
 
 const DEFAULT_SAVE = {
   v: SAVE_VERSION,
@@ -39,6 +39,9 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
   const hudFontSize = Math.max(34, Math.min(58, width * 0.13));
 
   const birdFrames = useMemo(() => createBirdFrames(), []);
+  const pipeTexture = useMemo(() => createPipeTexture(), []);
+  const groundTexture = useMemo(() => createGroundTexture(), []);
+  const cloudTexture = useMemo(() => createCloudTexture(), []);
 
   const [view, setView] = useState({
     birdX: width * 0.3,
@@ -48,6 +51,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     started: false,
     groundY,
     bob: 0,
+    scrollX: 0,
     pipes: []
   });
 
@@ -87,6 +91,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
         score: 0,
         pipes: [],
         bob: 0,
+        scrollX: 0,
         pipeSpeed: BASE_CONFIG.basePipeSpeed,
         currentGap: BASE_CONFIG.maxGap,
         spawner: new Spawner(BASE_CONFIG, () => height)
@@ -101,6 +106,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
         started: false,
         groundY,
         bob: 0,
+        scrollX: 0,
         pipes: []
       });
       onScore?.(0);
@@ -150,6 +156,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
       );
 
       const move = world.pipeSpeed * dt;
+      world.scrollX += move;
       world.pipes.forEach((pipe) => {
         pipe.x -= move;
         pipe.topRect.x = pipe.x;
@@ -172,6 +179,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
       }
     } else {
       world.bob += dt;
+      world.scrollX += 20 * dt;
       world.bird.y += Math.sin(world.bob * 3.4) * 0.42;
     }
 
@@ -183,6 +191,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
       started: world.started,
       groundY,
       bob: world.bob,
+      scrollX: world.scrollX,
       pipes: world.pipes.map((pipe) => ({
         id: pipe.id,
         x: pipe.x,
@@ -197,14 +206,17 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     <pixiContainer eventMode="static" pointertap={flap}>
       <pixiGraphics draw={(g) => drawBackground(g, width, height, groundY)} />
 
+      <pixiSprite texture={cloudTexture} x={width * 0.16} y={height * 0.12} anchor={0.5} alpha={0.72} scale={0.82} />
+      <pixiSprite texture={cloudTexture} x={width * 0.68} y={height * 0.18} anchor={0.5} alpha={0.62} scale={1.12} />
+
       {view.pipes.map((pipe) => (
         <pixiContainer key={pipe.id}>
-          <pixiGraphics draw={(g) => drawPipe(g, pipe.topRect.x, pipe.topRect.y, pipe.topRect.w, pipe.topRect.h)} />
-          <pixiGraphics draw={(g) => drawPipe(g, pipe.bottomRect.x, pipe.bottomRect.y, pipe.bottomRect.w, pipe.bottomRect.h)} />
+          <pixiSprite texture={pipeTexture} x={pipe.topRect.x} y={pipe.topRect.y} width={pipe.topRect.w} height={pipe.topRect.h} />
+          <pixiSprite texture={pipeTexture} x={pipe.bottomRect.x} y={pipe.bottomRect.y} width={pipe.bottomRect.w} height={pipe.bottomRect.h} />
         </pixiContainer>
       ))}
 
-      <pixiGraphics draw={(g) => drawGround(g, width, height, view.groundY, view.bob)} />
+      <pixiTilingSprite texture={groundTexture} x={0} y={view.groundY} width={width} height={height - view.groundY} tilePosition={{ x: -view.scrollX, y: 0 }} />
 
       <pixiAnimatedSprite
         textures={birdFrames}
@@ -251,11 +263,6 @@ function drawBackground(g, width, height, groundY) {
   g.circle(sunX, sunY, sunRadius).fill({ color: 0xffea85, alpha: 0.95 });
   g.circle(sunX, sunY, sunRadius + 16).fill({ color: 0xfff4b0, alpha: 0.3 });
 
-  const cloudBase = Math.max(16, width * 0.05);
-  const cloudY = Math.max(42, height * 0.12);
-  g.ellipse(width * 0.2, cloudY, cloudBase * 1.3, cloudBase).fill({ color: 0xffffff, alpha: 0.72 });
-  g.ellipse(width * 0.68, cloudY * 1.28, cloudBase * 1.6, cloudBase * 1.1).fill({ color: 0xffffff, alpha: 0.62 });
-
   const skylineY = groundY - Math.max(44, height * 0.1);
   for (let i = 0; i < 6; i += 1) {
     const blockW = width * 0.08 + i * 3;
@@ -269,39 +276,87 @@ function drawBackground(g, width, height, groundY) {
   g.ellipse(width * 0.8, groundY + 18, width * 0.55, hillHeight * 1.1).fill({ color: 0x72bf61, alpha: 0.88 });
 }
 
-function drawPipe(g, x, y, width, height) {
-  g.clear();
-  g.roundRect(x, y, width, height, 12).fill(0x2f9e44);
-  g.roundRect(x + width * 0.13, y + 8, width * 0.16, Math.max(6, height - 16), 8).fill({ color: 0x72d67a, alpha: 0.52 });
-  g.roundRect(x + width * 0.72, y + 8, width * 0.14, Math.max(6, height - 16), 8).fill({ color: 0x248438, alpha: 0.52 });
-  g.roundRect(x, y, width, height, 12).stroke({ color: 0x1f6d30, width: 3 });
+function createPipeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 96;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return Texture.EMPTY;
 
-  const capHeight = Math.min(20, Math.max(14, height * 0.07));
-  const capY = y + (height > capHeight * 2 ? capHeight : 0);
-  g.roundRect(x - 4, capY, width + 8, capHeight, 9).fill(0x3abf56).stroke({ color: 0x1f6d30, width: 2 });
+  const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  gradient.addColorStop(0, '#3cc354');
+  gradient.addColorStop(0.4, '#2fa84a');
+  gradient.addColorStop(1, '#23863a');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const boltY = capY + capHeight * 0.5;
-  g.circle(x + 6, boltY, 2).fill(0x1f6d30);
-  g.circle(x + width + 2, boltY, 2).fill(0x1f6d30);
+  ctx.fillStyle = 'rgba(255,255,255,0.24)';
+  ctx.fillRect(14, 0, 12, canvas.height);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(canvas.width - 18, 0, 10, canvas.height);
+
+  ctx.strokeStyle = '#1f6d30';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+
+  ctx.fillStyle = '#41ca5b';
+  ctx.fillRect(-4, 20, canvas.width + 8, 24);
+  ctx.strokeStyle = '#1f6d30';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(-2, 22, canvas.width + 4, 20);
+
+  return Texture.from(canvas);
 }
 
-function drawGround(g, width, height, groundY, bob) {
-  g.clear();
-  g.rect(0, groundY, width, height - groundY).fill(0xd8be72);
-  g.rect(0, groundY, width, 10).fill(0xc9984a);
+function createGroundTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return Texture.EMPTY;
 
-  const stripeWidth = 44;
-  const offset = (bob * 32) % stripeWidth;
-  for (let x = -stripeWidth; x < width + stripeWidth; x += stripeWidth) {
-    g.rect(x - offset, groundY + 14, stripeWidth * 0.5, Math.max(10, height - groundY - 18)).fill({ color: 0xc89f59, alpha: 0.5 });
+  ctx.fillStyle = '#d8be72';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = '#c9984a';
+  ctx.fillRect(0, 0, canvas.width, 14);
+
+  for (let x = 0; x < canvas.width; x += 44) {
+    ctx.fillStyle = 'rgba(200,159,89,0.5)';
+    ctx.fillRect(x, 20, 22, canvas.height - 24);
+
+    ctx.strokeStyle = '#62b74f';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, 14);
+    ctx.lineTo(x + 8, 6);
+    ctx.lineTo(x + 12, 14);
+    ctx.stroke();
   }
 
-  const grassStep = 26;
-  const grassOffset = (bob * 20) % grassStep;
-  for (let x = -grassStep; x < width + grassStep; x += grassStep) {
-    const gx = x - grassOffset;
-    g.moveTo(gx, groundY + 10).lineTo(gx + 4, groundY + 3).lineTo(gx + 8, groundY + 10).stroke({ color: 0x62b74f, width: 2 });
-  }
+  return Texture.from(canvas);
+}
+
+function createCloudTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 180;
+  canvas.height = 90;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return Texture.EMPTY;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath();
+  ctx.ellipse(55, 48, 32, 24, 0, 0, Math.PI * 2);
+  ctx.ellipse(92, 40, 36, 28, 0, 0, Math.PI * 2);
+  ctx.ellipse(130, 50, 30, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(215,238,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(92, 58, 66, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  return Texture.from(canvas);
 }
 
 function createBirdFrames() {
