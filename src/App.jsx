@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Application, extend, useTick } from '@pixi/react';
 import { AnimatedSprite, Container, Graphics, Sprite, Text, Texture, TilingSprite } from 'pixi.js';
 import { BASE_CONFIG, GAME_STATE, SAVE_VERSION } from './core/constants.js';
@@ -87,7 +87,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
   const worldRef = useRef(null);
   const pipeIdRef = useRef(1);
 
-  const flap = () => {
+  const flap = useCallback(() => {
     const world = worldRef.current;
     if (!world || world.dead || gameState !== GAME_STATE.PLAYING) return;
 
@@ -97,7 +97,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     }
 
     Physics.flap(world.bird, BASE_CONFIG.flapImpulse);
-  };
+  }, [gameState, onStartGameplay]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -109,7 +109,20 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [gameState]);
+  }, [gameState, flap]);
+
+
+  useEffect(() => {
+    if (gameState !== GAME_STATE.PLAYING) return undefined;
+
+    const onPointerDown = (event) => {
+      if (event.target instanceof HTMLElement && event.target.closest('button')) return;
+      flap();
+    };
+
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [gameState, flap]);
 
   useEffect(() => {
     const createWorld = () => {
@@ -232,7 +245,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
   });
 
   return (
-    <pixiContainer eventMode="static" pointertap={flap}>
+    <pixiContainer eventMode="passive">
       <pixiGraphics draw={(g) => drawBackground(g, width, height, groundY)} />
 
       <pixiSprite texture={cloudTexture} x={width * 0.16} y={height * 0.12} anchor={0.5} alpha={0.72} scale={0.82} />
