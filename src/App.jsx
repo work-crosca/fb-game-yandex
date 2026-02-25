@@ -245,10 +245,24 @@ function drawBackground(g, width, height, groundY) {
   g.clear();
   g.rect(0, 0, width, groundY).fill({ color: 0x8fd3ff });
 
+  const sunRadius = Math.max(28, Math.min(56, width * 0.09));
+  const sunX = width * 0.84;
+  const sunY = Math.max(56, height * 0.12);
+  g.circle(sunX, sunY, sunRadius).fill({ color: 0xffea85, alpha: 0.95 });
+  g.circle(sunX, sunY, sunRadius + 16).fill({ color: 0xfff4b0, alpha: 0.3 });
+
   const cloudBase = Math.max(16, width * 0.05);
   const cloudY = Math.max(42, height * 0.12);
   g.ellipse(width * 0.2, cloudY, cloudBase * 1.3, cloudBase).fill({ color: 0xffffff, alpha: 0.72 });
   g.ellipse(width * 0.68, cloudY * 1.28, cloudBase * 1.6, cloudBase * 1.1).fill({ color: 0xffffff, alpha: 0.62 });
+
+  const skylineY = groundY - Math.max(44, height * 0.1);
+  for (let i = 0; i < 6; i += 1) {
+    const blockW = width * 0.08 + i * 3;
+    const blockH = 26 + (i % 3) * 12;
+    const x = i * (blockW + 12) - 8;
+    g.roundRect(x, skylineY - blockH, blockW, blockH, 6).fill({ color: 0x6ea7cf, alpha: 0.35 });
+  }
 
   const hillHeight = Math.max(50, height * 0.12);
   g.ellipse(width * 0.12, groundY + 18, width * 0.42, hillHeight).fill({ color: 0x83c76a, alpha: 0.9 });
@@ -259,10 +273,16 @@ function drawPipe(g, x, y, width, height) {
   g.clear();
   g.roundRect(x, y, width, height, 12).fill(0x2f9e44);
   g.roundRect(x + width * 0.13, y + 8, width * 0.16, Math.max(6, height - 16), 8).fill({ color: 0x72d67a, alpha: 0.52 });
+  g.roundRect(x + width * 0.72, y + 8, width * 0.14, Math.max(6, height - 16), 8).fill({ color: 0x248438, alpha: 0.52 });
   g.roundRect(x, y, width, height, 12).stroke({ color: 0x1f6d30, width: 3 });
 
   const capHeight = Math.min(20, Math.max(14, height * 0.07));
-  g.roundRect(x - 4, y + (height > capHeight * 2 ? capHeight : 0), width + 8, capHeight, 9).fill(0x3abf56).stroke({ color: 0x1f6d30, width: 2 });
+  const capY = y + (height > capHeight * 2 ? capHeight : 0);
+  g.roundRect(x - 4, capY, width + 8, capHeight, 9).fill(0x3abf56).stroke({ color: 0x1f6d30, width: 2 });
+
+  const boltY = capY + capHeight * 0.5;
+  g.circle(x + 6, boltY, 2).fill(0x1f6d30);
+  g.circle(x + width + 2, boltY, 2).fill(0x1f6d30);
 }
 
 function drawGround(g, width, height, groundY, bob) {
@@ -274,6 +294,13 @@ function drawGround(g, width, height, groundY, bob) {
   const offset = (bob * 32) % stripeWidth;
   for (let x = -stripeWidth; x < width + stripeWidth; x += stripeWidth) {
     g.rect(x - offset, groundY + 14, stripeWidth * 0.5, Math.max(10, height - groundY - 18)).fill({ color: 0xc89f59, alpha: 0.5 });
+  }
+
+  const grassStep = 26;
+  const grassOffset = (bob * 20) % grassStep;
+  for (let x = -grassStep; x < width + grassStep; x += grassStep) {
+    const gx = x - grassOffset;
+    g.moveTo(gx, groundY + 10).lineTo(gx + 4, groundY + 3).lineTo(gx + 8, groundY + 10).stroke({ color: 0x62b74f, width: 2 });
   }
 }
 
@@ -320,6 +347,19 @@ function createBirdFrames() {
     ctx.moveTo(12, -1);
     ctx.lineTo(21, 1);
     ctx.lineTo(12, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ffe58c';
+    ctx.beginPath();
+    ctx.ellipse(-11, -6, 4, 2, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#e3902c';
+    ctx.beginPath();
+    ctx.moveTo(-18, 2);
+    ctx.lineTo(-24, 0);
+    ctx.lineTo(-18, -2);
     ctx.closePath();
     ctx.fill();
 
@@ -493,7 +533,7 @@ export default function App() {
     sdkRef.current?.startGameplay();
   };
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2);
 
   return (
     <div className="app-shell">
