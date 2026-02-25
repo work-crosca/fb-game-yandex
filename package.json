@@ -15,7 +15,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "vite": "^5.4.11"
+    "vite": "^4.5.5"
   },
   "description": "1. `npm install` 2. `npm run dev` 3. Open `http://localhost:5173`",
   "main": "vite.config.js",
