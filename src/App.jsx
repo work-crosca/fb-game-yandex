@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Application, extend, useTick } from '@pixi/react';
 import { Container, Graphics, Text } from 'pixi.js';
 import { BASE_CONFIG, GAME_STATE, SAVE_VERSION } from './core/constants.js';
