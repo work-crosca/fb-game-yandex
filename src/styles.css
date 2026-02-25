@@ -33,20 +33,21 @@ body,
   align-items: center;
   justify-content: center;
   color: var(--text);
-  font-size: 1.3rem;
+  font-size: 1.05rem;
   font-weight: 700;
   pointer-events: none;
+  padding: 14px;
 }
 
 .menu,
 .leaderboard {
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   pointer-events: auto;
   margin: auto;
-  width: min(360px, calc(100% - 32px));
-  padding: 18px;
-  border-radius: 16px;
+  width: min(460px, calc(100% - 8px));
+  padding: 16px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 10px 35px rgba(16, 35, 63, 0.24);
 }
@@ -65,7 +66,8 @@ body,
 button {
   appearance: none;
   width: 100%;
-  padding: 12px;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 0;
   border-radius: 12px;
   font: inherit;
@@ -82,9 +84,22 @@ button:hover {
 
 .lb-list {
   width: 100%;
-  max-height: 280px;
+  max-height: 36vh;
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+@media (min-width: 700px) {
+  .panel {
+    font-size: 1.2rem;
+  }
+
+  .menu,
+  .leaderboard {
+    width: min(420px, calc(100% - 32px));
+    padding: 20px;
+    gap: 10px;
+  }
 }
