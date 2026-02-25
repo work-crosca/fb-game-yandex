@@ -33,7 +33,7 @@ function useWindowSize() {
   return size;
 }
 
-function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGameplay, onScore, onGameOver }) {
+function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGameplay, onScore, onGameOver, t }) {
   const groundHeight = Math.max(84, Math.min(148, height * 0.2));
   const groundY = height - groundHeight;
   const hudFontSize = Math.max(34, Math.min(58, width * 0.13));
@@ -228,7 +228,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
 
           {!view.started && (
             <pixiText
-              text="Tap / Space"
+              text={t.tapHint}
               x={width / 2}
               y={Math.max(BASE_CONFIG.hudTopPadding + 56, height * 0.2)}
               anchor={0.5}
@@ -547,6 +547,7 @@ export default function App() {
           onStartGameplay={onStartGameplay}
           onScore={setScore}
           onGameOver={onGameOver}
+          t={t}
         />
       </Application>
 
@@ -561,11 +562,11 @@ export default function App() {
 
       {gameState === GAME_STATE.MENU && (
         <div className="panel menu">
-          <p className="eyebrow">Arcade Mobile Edition</p>
+          <p className="eyebrow">{t.arcadeEdition}</p>
           <h1>{t.title}</h1>
           <div className="stats-row">
             <p className="stat-card"><span>{t.best}</span><strong>{bestScore}</strong></p>
-            <p className="stat-card"><span>{t.sound}</span><strong>{soundEnabled ? 'ON' : 'OFF'}</strong></p>
+            <p className="stat-card"><span>{t.sound}</span><strong>{soundEnabled ? t.on : t.off}</strong></p>
           </div>
           <button className="btn-primary" onClick={startRun}>{t.play}</button>
           <button onClick={onShowLeaderboard}>{t.leaderboard}</button>
@@ -575,7 +576,7 @@ export default function App() {
 
       {gameState === GAME_STATE.GAME_OVER && (
         <div className="panel menu">
-          <p className="eyebrow">Session ended</p>
+          <p className="eyebrow">{t.sessionEnded}</p>
           <h2>{t.gameOver}</h2>
           <div className="stats-row">
             <p className="stat-card"><span>{t.score}</span><strong>{score}</strong></p>

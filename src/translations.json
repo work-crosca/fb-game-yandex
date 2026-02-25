@@ -14,7 +14,12 @@
     "loading": "Loading...",
     "loadingLb": "Loading leaderboard...",
     "noEntries": "No entries yet",
-    "yourRank": "Your rank"
+    "yourRank": "Your rank",
+    "arcadeEdition": "Arcade Mobile Edition",
+    "sessionEnded": "Session ended",
+    "on": "ON",
+    "off": "OFF",
+    "tapHint": "Tap / Space"
   },
   "ru": {
     "title": "Flappy Bird",
@@ -31,7 +36,12 @@
     "loading": "Zagruzka...",
     "loadingLb": "Zagruzka liderborda...",
     "noEntries": "Net zapisey",
-    "yourRank": "Vash rang"
+    "yourRank": "Vash rang",
+    "arcadeEdition": "Mobilnaya arkada",
+    "sessionEnded": "Sessiya zavershena",
+    "on": "VKL",
+    "off": "VYKL",
+    "tapHint": "Tap / Space"
   },
   "ro": {
     "title": "Flappy Bird",
@@ -48,6 +58,11 @@
     "loading": "Se incarca...",
     "loadingLb": "Se incarca clasamentul...",
     "noEntries": "Nu exista intrari",
-    "yourRank": "Pozitia ta"
+    "yourRank": "Pozitia ta",
+    "arcadeEdition": "Editie Arcade Mobile",
+    "sessionEnded": "Sesiune incheiata",
+    "on": "PORNIT",
+    "off": "OPRIT",
+    "tapHint": "Atinge / Space"
   }
 }
