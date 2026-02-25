@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Application, extend, useTick } from '@pixi/react';
+import { Application, extend } from '@pixi/react';
 import { AnimatedSprite, Container, Graphics, Sprite, Text, Texture, TilingSprite } from 'pixi.js';
 import { BASE_CONFIG, GAME_STATE, SAVE_VERSION } from './core/constants.js';
 import { Physics } from './core/systems/Physics.js';
@@ -166,83 +166,97 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
     world.bird.y = Math.max(100, world.bird.y - 40);
   }, [reviveNonce]);
 
-  useTick((delta) => {
-    if (gameState !== GAME_STATE.PLAYING) return;
+  useEffect(() => {
+    let raf = 0;
+    let prev = performance.now();
 
-    const world = worldRef.current;
-    if (!world || world.dead) return;
+    const tick = (now) => {
+      const world = worldRef.current;
+      if (!world) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
 
-    const dt = delta / 60;
+      const dt = Math.min(0.2, Math.max(0.001, (now - prev) / 1000));
+      prev = now;
 
-    if (world.started) {
-      Physics.updateBird(world.bird, dt, BASE_CONFIG.gravity, BASE_CONFIG.maxFall);
+      if (gameState === GAME_STATE.PLAYING && !world.dead) {
+        if (world.started) {
+          Physics.updateBird(world.bird, dt, BASE_CONFIG.gravity, BASE_CONFIG.maxFall);
 
-      world.spawner.tick(
-        dt,
-        (centerY, gap) => {
-          const x = width + 40;
-          const topH = centerY - gap / 2;
-          const bottomY = centerY + gap / 2;
-          const bottomH = Math.max(10, groundY - bottomY);
+          world.spawner.tick(
+            dt,
+            (centerY, gap) => {
+              const x = width + 40;
+              const topH = centerY - gap / 2;
+              const bottomY = centerY + gap / 2;
+              const bottomH = Math.max(10, groundY - bottomY);
 
-          world.pipes.push({
-            id: pipeIdRef.current++,
-            x,
-            width: BASE_CONFIG.pipeWidth,
-            topRect: { x, y: 0, w: BASE_CONFIG.pipeWidth, h: Math.max(10, topH) },
-            bottomRect: { x, y: bottomY, w: BASE_CONFIG.pipeWidth, h: bottomH },
-            scored: false
+              world.pipes.push({
+                id: pipeIdRef.current++,
+                x,
+                width: BASE_CONFIG.pipeWidth,
+                topRect: { x, y: 0, w: BASE_CONFIG.pipeWidth, h: Math.max(10, topH) },
+                bottomRect: { x, y: bottomY, w: BASE_CONFIG.pipeWidth, h: bottomH },
+                scored: false
+              });
+            },
+            world.currentGap
+          );
+
+          const move = world.pipeSpeed * dt;
+          world.scrollX += move;
+          world.pipes.forEach((pipe) => {
+            pipe.x -= move;
+            pipe.topRect.x = pipe.x;
+            pipe.bottomRect.x = pipe.x;
           });
-        },
-        world.currentGap
-      );
+          world.pipes = world.pipes.filter((pipe) => pipe.x + pipe.width > -20);
 
-      const move = world.pipeSpeed * dt;
-      world.scrollX += move;
-      world.pipes.forEach((pipe) => {
-        pipe.x -= move;
-        pipe.topRect.x = pipe.x;
-        pipe.bottomRect.x = pipe.x;
+          const gained = Scoring.countPassed(world.pipes, world.bird.x);
+          if (gained > 0) {
+            world.score += gained;
+            const diff = Difficulty.fromScore(world.score, BASE_CONFIG);
+            world.pipeSpeed = diff.speed;
+            world.currentGap = diff.gap;
+            onScore?.(world.score);
+          }
+
+          if (hasCollision(world.bird, world.pipes, groundY)) {
+            world.dead = true;
+            onGameOver?.(world.score);
+          }
+        } else {
+          world.bob += dt;
+          world.scrollX += 20 * dt;
+          world.bird.y += Math.sin(world.bob * 3.4) * 0.42;
+        }
+      }
+
+      setView({
+        birdX: world.bird.x,
+        birdY: world.bird.y,
+        birdRotation: world.bird.rotation,
+        score: world.score,
+        started: world.started,
+        groundY,
+        bob: world.bob,
+        scrollX: world.scrollX,
+        pipes: world.pipes.map((pipe) => ({
+          id: pipe.id,
+          x: pipe.x,
+          width: pipe.width,
+          topRect: { ...pipe.topRect },
+          bottomRect: { ...pipe.bottomRect }
+        }))
       });
-      world.pipes = world.pipes.filter((pipe) => pipe.x + pipe.width > -20);
 
-      const gained = Scoring.countPassed(world.pipes, world.bird.x);
-      if (gained > 0) {
-        world.score += gained;
-        const diff = Difficulty.fromScore(world.score, BASE_CONFIG);
-        world.pipeSpeed = diff.speed;
-        world.currentGap = diff.gap;
-        onScore?.(world.score);
-      }
+      raf = requestAnimationFrame(tick);
+    };
 
-      if (hasCollision(world.bird, world.pipes, groundY)) {
-        world.dead = true;
-        onGameOver?.(world.score);
-      }
-    } else {
-      world.bob += dt;
-      world.scrollX += 20 * dt;
-      world.bird.y += Math.sin(world.bob * 3.4) * 0.42;
-    }
-
-    setView({
-      birdX: world.bird.x,
-      birdY: world.bird.y,
-      birdRotation: world.bird.rotation,
-      score: world.score,
-      started: world.started,
-      groundY,
-      bob: world.bob,
-      scrollX: world.scrollX,
-      pipes: world.pipes.map((pipe) => ({
-        id: pipe.id,
-        x: pipe.x,
-        width: pipe.width,
-        topRect: { ...pipe.topRect },
-        bottomRect: { ...pipe.bottomRect }
-      }))
-    });
-  });
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [gameState, groundY, height, onGameOver, onScore, width]);
 
   return (
     <pixiContainer eventMode="passive">
@@ -253,8 +267,8 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
 
       {view.pipes.map((pipe) => (
         <pixiContainer key={pipe.id}>
-          <pixiSprite texture={pipeTexture} x={pipe.topRect.x} y={pipe.topRect.y} width={pipe.topRect.w} height={pipe.topRect.h} />
-          <pixiSprite texture={pipeTexture} x={pipe.bottomRect.x} y={pipe.bottomRect.y} width={pipe.bottomRect.w} height={pipe.bottomRect.h} />
+          <pixiGraphics draw={(g) => drawPipeFallback(g, pipe.topRect)} />
+          <pixiGraphics draw={(g) => drawPipeFallback(g, pipe.bottomRect)} />
         </pixiContainer>
       ))}
 
@@ -268,7 +282,10 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
         y={view.birdY}
         rotation={view.birdRotation}
         anchor={0.5}
+        alpha={0.18}
       />
+
+      <pixiGraphics x={view.birdX} y={view.birdY} rotation={view.birdRotation} draw={(g) => drawBirdFallback(g)} />
 
       {gameState === GAME_STATE.PLAYING && (
         <>
@@ -316,6 +333,16 @@ function drawBackground(g, width, height, groundY) {
   const hillHeight = Math.max(50, height * 0.12);
   g.ellipse(width * 0.12, groundY + 18, width * 0.42, hillHeight).fill({ color: 0x83c76a, alpha: 0.9 });
   g.ellipse(width * 0.8, groundY + 18, width * 0.55, hillHeight * 1.1).fill({ color: 0x72bf61, alpha: 0.88 });
+}
+
+function drawPipeFallback(g, rect) {
+  g.clear();
+  g.rect(rect.x, rect.y, rect.w, rect.h).fill(0x2f9e44).stroke({ color: 0x1f6d30, width: 3 });
+}
+
+function drawBirdFallback(g) {
+  g.clear();
+  g.ellipse(0, 0, 18, 13).fill(0xf2c94c).stroke({ color: 0x9e6f00, width: 3 });
 }
 
 function createPipeTexture() {
