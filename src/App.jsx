@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Container, Graphics, Text, useTick } from '@pixi/react';
+import { Application, extend, useTick } from '@pixi/react';
+import { Container, Graphics, Text } from 'pixi.js';
 import { BASE_CONFIG, GAME_STATE, SAVE_VERSION } from './core/constants.js';
 import { Physics } from './core/systems/Physics.js';
 import { Spawner } from './core/systems/Spawner.js';
@@ -10,6 +11,8 @@ import { YandexSDK } from './platform/yandex/YandexSDK.js';
 import { YandexCloud } from './platform/yandex/YandexCloud.js';
 import { YandexAds } from './platform/yandex/YandexAds.js';
 import { YandexLeaderboard } from './platform/yandex/YandexLB.js';
+
+extend({ Container, Graphics, Text });
 
 const DEFAULT_SAVE = {
   v: SAVE_VERSION,
@@ -179,19 +182,19 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
   const onPointerDown = () => flap();
 
   return (
-    <Container eventMode="static" pointertap={onPointerDown}>
-      <Graphics draw={(g) => g.clear().rect(0, 0, width, height).fill(0x8fd3ff)} />
+    <pixiContainer eventMode="static" pointertap={onPointerDown}>
+      <pixiGraphics draw={(g) => g.clear().rect(0, 0, width, height).fill(0x8fd3ff)} />
 
       {view.pipes.map((pipe) => (
-        <Container key={pipe.id}>
-          <Graphics draw={(g) => g.clear().rect(pipe.topRect.x, pipe.topRect.y, pipe.topRect.w, pipe.topRect.h).fill(0x2f9e44).stroke({ color: 0x1f6d30, width: 4 })} />
-          <Graphics draw={(g) => g.clear().rect(pipe.bottomRect.x, pipe.bottomRect.y, pipe.bottomRect.w, pipe.bottomRect.h).fill(0x2f9e44).stroke({ color: 0x1f6d30, width: 4 })} />
-        </Container>
+        <pixiContainer key={pipe.id}>
+          <pixiGraphics draw={(g) => g.clear().rect(pipe.topRect.x, pipe.topRect.y, pipe.topRect.w, pipe.topRect.h).fill(0x2f9e44).stroke({ color: 0x1f6d30, width: 4 })} />
+          <pixiGraphics draw={(g) => g.clear().rect(pipe.bottomRect.x, pipe.bottomRect.y, pipe.bottomRect.w, pipe.bottomRect.h).fill(0x2f9e44).stroke({ color: 0x1f6d30, width: 4 })} />
+        </pixiContainer>
       ))}
 
-      <Graphics draw={(g) => g.clear().rect(0, view.groundY, width, height - view.groundY).fill(0xd8be72)} />
+      <pixiGraphics draw={(g) => g.clear().rect(0, view.groundY, width, height - view.groundY).fill(0xd8be72)} />
 
-      <Graphics
+      <pixiGraphics
         x={view.birdX}
         y={view.birdY}
         rotation={view.birdRotation}
@@ -199,7 +202,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
       />
 
       {gameState === GAME_STATE.PLAYING && (
-        <Text
+        <pixiText
           text={`${view.score}`}
           x={width / 2}
           y={BASE_CONFIG.hudTopPadding}
@@ -207,7 +210,7 @@ function GameCanvas({ width, height, gameState, roundId, reviveNonce, onStartGam
           style={{ fontSize: 54, fill: '#ffffff', fontWeight: 900, stroke: { color: '#10233f', width: 6 } }}
         />
       )}
-    </Container>
+    </pixiContainer>
   );
 }
 
@@ -372,7 +375,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Stage width={width} height={height} options={{ antialias: true, backgroundAlpha: 0 }}>
+      <Application width={width} height={height} antialias backgroundAlpha={0}>
         <GameCanvas
           width={width}
           height={height}
@@ -383,7 +386,7 @@ export default function App() {
           onScore={setScore}
           onGameOver={onGameOver}
         />
-      </Stage>
+      </Application>
 
       {gameState === GAME_STATE.SDK_INIT && <div className="panel">{t.loading}</div>}
 

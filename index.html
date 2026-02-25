@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Flappy Bird - Yandex</title>
-  <script src="/sdk.js"></script>
   <script>
-    if (!window.YaGames) {
-      const s = document.createElement('script');
-      s.src = 'https://yandex.ru/games/sdk/v2';
-      document.head.appendChild(s);
-    }
+    (function loadYandexSdk() {
+      const host = window.location.hostname;
+      const isYandexHost = host.includes('yandex');
+      if (!isYandexHost) return;
+      const script = document.createElement('script');
+      script.src = '/sdk.js';
+      document.head.appendChild(script);
+    })();
   </script>
 </head>
 <body>
